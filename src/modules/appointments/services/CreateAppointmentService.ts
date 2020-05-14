@@ -1,7 +1,8 @@
-import { getHours, isBefore, startOfHour } from 'date-fns';
+import { format, getHours, isBefore, startOfHour } from 'date-fns';
 import Appointment from '@modules/appointments/infra/typeorm/entities/Appointment';
 import AppError from '@shared/errors/AppError';
 import IAppointmentsRepository from '@modules/appointments/repositories/IAppointmentsRepository';
+import INotificationsRepository from '@modules/notifications/repositories/INotificationsRepository';
 import { inject, injectable } from 'tsyringe';
 
 interface IRequest {
@@ -15,6 +16,8 @@ class CreateAppointmentService {
     constructor(
         @inject('AppointmentsRepository')
         private appointmentsRepository: IAppointmentsRepository,
+        @inject('NotificationsRepository')
+        private notificationsRepository: INotificationsRepository,
     ) {}
 
     public async execute({ user_id, provider_id, date }: IRequest): Promise<Appointment> {
@@ -39,6 +42,13 @@ class CreateAppointmentService {
         if (checkAppointmentInSameDate) {
             throw new AppError('This appointment is already booked');
         }
+
+        const formattedDate = format(appointmentDate, "dd/MM/yyyy 'às' HH:mm'h'");
+
+        await this.notificationsRepository.create({
+            recipient_id: provider_id,
+            content: `Novo agendamento marcado na data ${formattedDate}`,
+        });
 
         return this.appointmentsRepository.create({
             user_id,
