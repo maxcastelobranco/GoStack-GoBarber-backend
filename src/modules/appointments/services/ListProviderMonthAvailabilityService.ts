@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import IAppointmentsRepository from '@modules/appointments/repositories/IAppointmentsRepository';
-import { getDate, getDaysInMonth } from 'date-fns';
+import { getDate, getDaysInMonth, getHours, getMonth, getYear, isAfter, isEqual } from 'date-fns';
 import { inject, injectable } from 'tsyringe';
 
 interface IRequest {
@@ -12,6 +12,7 @@ interface IRequest {
 type IResponse = Array<{
     day: number;
     available: boolean;
+    isFull: boolean;
 }>;
 
 @injectable()
@@ -33,12 +34,25 @@ class ListProviderMonthAvailabilityService {
         const availability: IResponse = [];
 
         for (let day = 1; day <= numberOfDaysInTheMonth; day += 1) {
-            const available =
+            const today = new Date(getYear(Date.now()), getMonth(Date.now()), getDate(Date.now()));
+
+            let available =
                 appointments.filter(appointment => getDate(appointment.date) === day).length < 10;
+
+            const isFull = !available;
+
+            if (isAfter(today, new Date(year, month - 1, day))) {
+                available = false;
+            }
+
+            if (isEqual(today, new Date(year, month - 1, day)) && getHours(Date.now()) >= 17) {
+                available = false;
+            }
 
             availability.push({
                 day,
                 available,
+                isFull,
             });
         }
 
